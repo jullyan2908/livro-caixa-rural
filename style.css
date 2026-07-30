@@ -465,10 +465,10 @@ button, input, select, textarea{
 }
 
 .cartao .valor{
-    font-size:1.8rem;
+    font-size:1.3rem;
     font-weight:700;
     color:var(--ink);
-    overflow-wrap:anywhere;
+    white-space:nowrap;
     line-height:1.2;
 }
 
