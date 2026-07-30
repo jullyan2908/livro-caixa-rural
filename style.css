@@ -447,6 +447,7 @@ button, input, select, textarea{
     border:3px solid transparent;
     transition:all .15s;
     cursor:default;
+    overflow:hidden;
 }
 
 .cartao:hover{
@@ -467,6 +468,8 @@ button, input, select, textarea{
     font-size:1.8rem;
     font-weight:700;
     color:var(--ink);
+    overflow-wrap:anywhere;
+    line-height:1.2;
 }
 
 .cartao .valor.brand{ color:var(--brand-dark); }
