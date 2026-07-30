@@ -886,11 +886,41 @@ button.excluir:hover{
     }
 
     .grid-cartoes{
-        grid-template-columns:1fr 1fr;
+        grid-template-columns:1fr;
     }
 
     .cartao .valor{
-        font-size:1.4rem;
+        font-size:1.6rem;
+    }
+
+    .historico-linha.cabecalho{
+        display:none;
+    }
+
+    .historico-linha{
+        grid-template-columns:1fr;
+        gap:6px;
+        padding:16px 18px;
+    }
+
+    .historico-linha > div{
+        display:flex;
+        justify-content:space-between;
+        align-items:baseline;
+        gap:12px;
+    }
+
+    .historico-linha > div[data-label]::before{
+        content:attr(data-label);
+        font-weight:700;
+        font-size:.8rem;
+        color:var(--ink-faint);
+        text-transform:uppercase;
+        letter-spacing:.03em;
+    }
+
+    .historico-linha .mono{
+        font-size:1.1rem;
     }
 }
 
