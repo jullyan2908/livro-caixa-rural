@@ -460,24 +460,23 @@ function urlAnexo(anexo){
     return `data:${mime};base64,${anexo.dados}`;
 }
 
-function abrirAnexo(colecao, itemId, indice){
+async function abrirAnexo(colecao, itemId, indice){
     const item = dados[colecao].find(i=>i.id===itemId);
     const anexo = item && item.anexos && item.anexos[indice];
     if(!anexo) return;
 
+    const aba = window.open("", "_blank"); // abre a aba já (dentro do clique, pra não ser bloqueada)
     try{
-        const mime = anexo.tipo === "pdf" ? "application/pdf" : "image/jpeg";
-        const bytes = atob(anexo.dados);
-        const numeros = new Array(bytes.length);
-        for(let i=0; i<bytes.length; i++){
-            numeros[i] = bytes.charCodeAt(i);
-        }
-        const blob = new Blob([new Uint8Array(numeros)], {type: mime});
+        const resposta = await fetch(urlAnexo(anexo));
+        if(!resposta.ok) throw new Error("Falha ao converter o arquivo");
+        const blob = await resposta.blob();
         const url = URL.createObjectURL(blob);
-        window.open(url, "_blank");
+        if(aba) aba.location.href = url;
+        else window.open(url, "_blank");
         setTimeout(()=> URL.revokeObjectURL(url), 60000);
     }catch(e){
         console.log("Erro ao abrir anexo:", e);
+        if(aba) aba.close();
         mostrarToast("Não foi possível abrir esse arquivo");
     }
 }
