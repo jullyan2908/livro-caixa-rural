@@ -460,6 +460,28 @@ function urlAnexo(anexo){
     return `data:${mime};base64,${anexo.dados}`;
 }
 
+function abrirAnexo(colecao, itemId, indice){
+    const item = dados[colecao].find(i=>i.id===itemId);
+    const anexo = item && item.anexos && item.anexos[indice];
+    if(!anexo) return;
+
+    try{
+        const mime = anexo.tipo === "pdf" ? "application/pdf" : "image/jpeg";
+        const bytes = atob(anexo.dados);
+        const numeros = new Array(bytes.length);
+        for(let i=0; i<bytes.length; i++){
+            numeros[i] = bytes.charCodeAt(i);
+        }
+        const blob = new Blob([new Uint8Array(numeros)], {type: mime});
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(()=> URL.revokeObjectURL(url), 60000);
+    }catch(e){
+        console.log("Erro ao abrir anexo:", e);
+        mostrarToast("Não foi possível abrir esse arquivo");
+    }
+}
+
 function botaoAnexo(colecao, id, anexos){
     const qtd = (anexos||[]).length;
     const texto = qtd>0 ? `📎 ${qtd}` : "📎 Anexar";
@@ -1391,7 +1413,7 @@ function renderModalAnexos(){
             ${anexos.length===0 ? `<p style="color:var(--ink-faint);font-size:1.05rem;margin-bottom:18px;font-weight:500;">Nenhum arquivo anexado ainda.</p>` : anexos.map((a,i)=>`
                 <div class="anexo-item">
                     <span style="font-size:1.4rem;">${a.tipo==='pdf'?'📄':'🖼️'}</span>
-                    <a href="${urlAnexo(a)}" target="_blank" rel="noopener">${escapeHtml(a.nome)}</a>
+                    <a href="javascript:void(0)" onclick="abrirAnexo('${colecao}','${itemId}',${i})">${escapeHtml(a.nome)}</a>
                     <button class="excluir" onclick="removerAnexo('${colecao}','${itemId}',${i})">🗑️ Remover</button>
                 </div>
             `).join("")}
