@@ -4,7 +4,7 @@
 // Funcionamento offline
 // ======================================
 
-const CACHE_NAME = "livro-caixa-rural-v2";
+const CACHE_NAME = "livro-caixa-rural-v3";
 
 const ARQUIVOS = [
     "./",
@@ -18,16 +18,18 @@ const ARQUIVOS = [
 
 // Instalação
 self.addEventListener("install", evento => {
+    self.skipWaiting(); // não espera todas as abas fecharem — assume o controle assim que possível
     evento.waitUntil(
         caches.open(CACHE_NAME)
         .then(cache => cache.addAll(ARQUIVOS))
     );
 });
 
-// Abrir arquivos offline
+// Abrir arquivos: tenta a internet primeiro (pega sempre a versão mais nova).
+// Só usa a cópia guardada se estiver sem sinal (uso no campo/fazenda).
 self.addEventListener("fetch", evento => {
     // Deixa passar direto pedidos para a nuvem (Firebase, Excel, fontes)
-    // — só o "app shell" local é servido pelo cache.
+    // — só o "app shell" local passa pela lógica de cache abaixo.
     const url = evento.request.url;
     if (url.includes("googleapis.com") ||
         url.includes("firebaseio.com") ||
@@ -39,8 +41,13 @@ self.addEventListener("fetch", evento => {
     }
 
     evento.respondWith(
-        caches.match(evento.request)
-        .then(resposta => resposta || fetch(evento.request))
+        fetch(evento.request)
+            .then(resposta => {
+                const copia = resposta.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
+                return resposta;
+            })
+            .catch(() => caches.match(evento.request))
     );
 });
 
@@ -54,6 +61,6 @@ self.addEventListener("activate", evento => {
                     return caches.delete(chave);
                 }
             })
-        ))
+        )).then(() => self.clients.claim()) // assume o controle das abas já abertas na hora
     );
 });
