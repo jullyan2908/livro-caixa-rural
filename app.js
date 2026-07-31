@@ -47,6 +47,11 @@ const COLECOES = ["receitas","despesasCusteio","despesasInvestimento","despesasD
 const LIMITE_ANEXOS_KB = 700;
 const LIMITE_PDF_BYTES = 350 * 1024;
 
+// Cloudinary — armazenamento de anexos (fotos/PDF) fora do Firestore
+const CLOUDINARY_CLOUD_NAME = "zavj8y8b";
+const CLOUDINARY_UPLOAD_PRESET = "livro caixa";
+const LIMITE_ARQUIVO_BYTES = 8 * 1024 * 1024; // 8MB por arquivo
+
 let usuarioAtual = null;
 let pararListenerDados = null;
 
@@ -202,6 +207,52 @@ function comprimirImagemParaBase64(arquivo){
         leitor.onerror = ()=> reject(new Error("Não foi possível ler o arquivo"));
         leitor.readAsDataURL(arquivo);
     });
+}
+
+function comprimirImagemParaBlob(arquivo){
+    return new Promise((resolve, reject)=>{
+        const leitor = new FileReader();
+        leitor.onload = (e)=>{
+            const img = new Image();
+            img.onload = ()=>{
+                const MAX = 1600; // sem o limite do Firestore, pode manter mais nítido
+                let w = img.width, h = img.height;
+                if(w > MAX || h > MAX){
+                    if(w > h){ h = Math.round(h * MAX/w); w = MAX; }
+                    else{ w = Math.round(w * MAX/h); h = MAX; }
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                canvas.toBlob(blob=>{
+                    if(blob) resolve(blob);
+                    else reject(new Error("Não foi possível comprimir a imagem"));
+                }, "image/jpeg", 0.75);
+            };
+            img.onerror = ()=> reject(new Error("Não foi possível ler a imagem"));
+            img.src = e.target.result;
+        };
+        leitor.onerror = ()=> reject(new Error("Não foi possível ler o arquivo"));
+        leitor.readAsDataURL(arquivo);
+    });
+}
+
+async function enviarParaCloudinary(arquivoOuBlob, nomeArquivo){
+    const formData = new FormData();
+    formData.append("file", arquivoOuBlob, nomeArquivo);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    const resposta = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+        method: "POST",
+        body: formData
+    });
+
+    if(!resposta.ok){
+        throw new Error("Falha no envio para o Cloudinary");
+    }
+    const json = await resposta.json();
+    return json.secure_url;
 }
 
 function lerArquivoParaBase64(arquivo){
@@ -375,33 +426,23 @@ async function anexarArquivos(colecao, itemId, arquivos){
         return;
     }
 
-    mostrarToast("Processando arquivo(s)...");
+    mostrarToast("Enviando arquivo(s)...");
 
     for(const arquivo of Array.from(arquivos)){
         const ehPdf = arquivo.type === "application/pdf";
 
-        if(ehPdf && arquivo.size > LIMITE_PDF_BYTES){
-            mostrarToast(`PDF muito grande (máx. ${Math.round(LIMITE_PDF_BYTES/1024)}KB): ${arquivo.name}`);
+        if(arquivo.size > LIMITE_ARQUIVO_BYTES){
+            mostrarToast(`Arquivo muito grande (máx. ${Math.round(LIMITE_ARQUIVO_BYTES/1024/1024)}MB): ${arquivo.name}`);
             continue;
         }
 
         try{
-            const base64 = ehPdf
-                ? await lerArquivoParaBase64(arquivo)
-                : await comprimirImagemParaBase64(arquivo);
-
-            const tamanhoNovo = tamanhoAnexosKB(anexosAtuais) + (base64.length*0.75/1024);
-
-            if(tamanhoNovo > LIMITE_ANEXOS_KB){
-                mostrarToast(`Sem espaço para "${arquivo.name}" neste lançamento — tente um arquivo menor`);
-                continue;
-            }
-
-            anexosAtuais.push({ nome: arquivo.name, tipo: ehPdf?"pdf":"imagem", dados: base64 });
-
+            const paraEnviar = ehPdf ? arquivo : await comprimirImagemParaBlob(arquivo);
+            const url = await enviarParaCloudinary(paraEnviar, arquivo.name);
+            anexosAtuais.push({ nome: arquivo.name, tipo: ehPdf?"pdf":"imagem", url: url });
         }catch(e){
-            console.log("Erro ao processar anexo:", e);
-            mostrarToast(`Erro ao processar ${arquivo.name}`);
+            console.log("Erro ao enviar anexo:", e);
+            mostrarToast(`Erro ao enviar ${arquivo.name}`);
         }
     }
 
@@ -1409,7 +1450,10 @@ function renderModalAnexos(){
             ${anexos.length===0 ? `<p style="color:var(--ink-faint);font-size:1.05rem;margin-bottom:18px;font-weight:500;">Nenhum arquivo anexado ainda.</p>` : anexos.map((a,i)=>`
                 <div class="anexo-item">
                     <span style="font-size:1.4rem;">${a.tipo==='pdf'?'📄':'🖼️'}</span>
-                    <a href="javascript:void(0)" onclick="abrirAnexo('${colecao}','${itemId}',${i})">${escapeHtml(a.nome)}</a>
+                    ${a.url
+                        ? `<a href="${a.url}" target="_blank" rel="noopener">${escapeHtml(a.nome)}</a>`
+                        : `<a href="javascript:void(0)" onclick="abrirAnexo('${colecao}','${itemId}',${i})">${escapeHtml(a.nome)}</a>`
+                    }
                     <button class="excluir" onclick="removerAnexo('${colecao}','${itemId}',${i})">🗑️ Remover</button>
                 </div>
             `).join("")}
@@ -1420,7 +1464,7 @@ function renderModalAnexos(){
             </div>
 
             <p style="font-size:.95rem;color:var(--ink-faint);margin-top:16px;font-weight:500;">
-                💡 Fotos são comprimidas automaticamente. PDFs até ${Math.round(LIMITE_PDF_BYTES/1024)}KB.
+                💡 Fotos são comprimidas automaticamente. Arquivos até ${Math.round(LIMITE_ARQUIVO_BYTES/1024/1024)}MB.
             </p>
         </div>
     </div>

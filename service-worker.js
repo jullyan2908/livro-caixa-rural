@@ -36,6 +36,7 @@ self.addEventListener("fetch", evento => {
         url.includes("firebasestorage") ||
         url.includes("gstatic.com") ||
         url.includes("jsdelivr.net") ||
+        url.includes("cloudinary.com") ||
         url.includes("google.com")) {
         return;
     }
