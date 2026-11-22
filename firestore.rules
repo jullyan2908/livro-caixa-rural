@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Regras de segurança do Livro Caixa Rural.
+// Cada conta só lê e grava os próprios dados (usuarios/<id da conta>/...).
+// Cole este texto em: Firebase → Firestore Database → Regras → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /usuarios/{uid}/{documento=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Qualquer outro caminho: ninguém lê nem grava
+    match /{caminho=**} {
+      allow read, write: if false;
+    }
+  }
+}

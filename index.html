@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width,initial-scale=1,maximum-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
 
     <title>Livro Caixa Rural</title>
 
@@ -25,14 +24,19 @@
 
 <div id="app-root"></div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+<!-- Firebase (cópia local: o app abre mesmo sem sinal) -->
+<script src="vendor/firebase/firebase-app-compat.js"></script>
+<script src="vendor/firebase/firebase-auth-compat.js"></script>
+<script src="vendor/firebase/firebase-firestore-compat.js"></script>
 
-<!-- Excel -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-
+<!-- O app (Excel, PDF e ZIP são carregados só quando precisa) -->
+<script src="js/util.js"></script>
+<script src="js/dados.js"></script>
+<script src="js/nota-pdf.js"></script>
+<script src="js/lancamentos.js"></script>
+<script src="js/painel.js"></script>
+<script src="js/declaracao.js"></script>
+<script src="js/exportar.js"></script>
 <script src="app.js"></script>
 
 <script>
